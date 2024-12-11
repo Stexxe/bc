@@ -28,11 +28,6 @@ func main() {
 	}
 	defer renderer.Destroy()
 
-	//surface, err := window.GetSurface()
-	//if err != nil {
-	//	panic(err)
-	//}
-
 	if err := img.Init(img.INIT_PNG); err != nil {
 		log.Fatal(err)
 	}
@@ -53,24 +48,28 @@ func main() {
 
 	texture, err := renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		log.Fatalf("Failed to create texture: %s\n", err)
+		log.Fatal(err)
 	}
 	defer texture.Destroy()
 
-	// Clear the renderer and draw the texture
-	renderer.Clear()
-	surface.FillRect(nil, sdl.Color{240, 240, 240, 255}.Uint32())
-	renderer.Copy(texture, nil, nil)
-	renderer.Present()
-
-	//rect := sdl.Rect{0, 0, 200, 200}
-	//colour := sdl.Color{R: 255, G: 0, B: 255, A: 255} // purple
-	//pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
-	//surface.FillRect(&rect, pixel)
-	//window.UpdateSurface()
+	ssTankX := int32(1)
+	ssTankY := int32(130)
+	size := int32(13)
+	frames := int32(2)
+	curFrame := int32(0)
+	scale := int32(2)
+	gap := int32(3)
+	frameDur := uint64(150)
+	accTime := uint64(0)
 
 	running := true
+	var delta uint64
+	curTime := sdl.GetTicks64()
+
 	for running {
+		delta = sdl.GetTicks64() - curTime
+
+		// Events
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event.(type) {
 			case *sdl.QuitEvent:
@@ -79,6 +78,28 @@ func main() {
 			}
 		}
 
-		sdl.Delay(33)
+		// State
+		accTime += delta
+		if accTime >= frameDur {
+			accTime = 0
+			curFrame++
+		}
+
+		if curFrame >= frames {
+			curFrame = 0
+		}
+
+		// Draw
+		renderer.SetDrawColor(169, 169, 169, 255)
+		renderer.Clear()
+
+		x := ssTankX + curFrame*(size+gap)
+		y := ssTankY
+
+		renderer.Copy(texture, &sdl.Rect{x, y, size, size}, &sdl.Rect{100, 100, size * scale, size * scale})
+		renderer.Present()
+
+		curTime = sdl.GetTicks64()
+		sdl.Delay(16)
 	}
 }
