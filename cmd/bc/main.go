@@ -2,7 +2,6 @@ package main
 
 import (
 	_ "embed"
-	"fmt"
 	"github.com/Stexxe/bc/internal/app/anim"
 	"github.com/Stexxe/bc/internal/app/util"
 	"github.com/veandco/go-sdl2/img"
@@ -17,7 +16,15 @@ var speed = float32(0)
 var direction = util.VectorUp
 var tankPos = util.NewVector(100, 100)
 
-const tankSpeed = 0.1
+const (
+	screenWidth  = 800
+	screenHeight = 600
+	tankSpeed    = 0.25
+	size         = int32(13)
+	scale        = int32(2)
+	gap          = int32(3)
+	frameDur     = uint64(50)
+)
 
 var tankAnim = "up"
 var tankAnims = map[string]anim.Descriptor{
@@ -27,7 +34,7 @@ var tankAnims = map[string]anim.Descriptor{
 	"right": {X: 97, Y: 129, FramesCount: 2},
 }
 
-var pressedKey sdl.Keycode = sdl.K_UNKNOWN
+var dirKey sdl.Keycode = sdl.K_UNKNOWN
 
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
@@ -35,7 +42,7 @@ func main() {
 	}
 	defer sdl.Quit()
 
-	window, err := sdl.CreateWindow("BATTLE CITY", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow("BATTLE CITY", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, screenWidth, screenHeight, sdl.WINDOW_SHOWN)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,11 +78,7 @@ func main() {
 	}
 	defer texture.Destroy()
 
-	size := int32(13)
 	curFrame := int32(0)
-	scale := int32(2)
-	gap := int32(3)
-	frameDur := uint64(150)
 	accTime := uint64(0)
 
 	running := true
@@ -89,27 +92,38 @@ func main() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.KeyboardEvent:
-				if e.Type == sdl.KEYDOWN && pressedKey == sdl.K_UNKNOWN {
-					speed = tankSpeed
-					pressedKey = e.Keysym.Sym
+				//t := "down"
+				//if e.Type == sdl.KEYUP {
+				//	t = "up"
+				//}
 
-					switch pressedKey {
+				//fmt.Println("ALL:", t, sdl.GetKeyName(e.Keysym.Sym), e.Repeat, e.State, "DirKey:", sdl.GetKeyName(dirKey))
+
+				if e.Type == sdl.KEYDOWN && e.Repeat == 0 {
+					switch e.Keysym.Sym {
 					case sdl.K_w:
+						dirKey = e.Keysym.Sym
+						speed = tankSpeed
 						direction = util.VectorUp
 						tankAnim = "up"
 					case sdl.K_a:
+						dirKey = e.Keysym.Sym
+						speed = tankSpeed
 						direction = util.VectorLeft
 						tankAnim = "left"
 					case sdl.K_s:
+						dirKey = e.Keysym.Sym
+						speed = tankSpeed
 						direction = util.VectorDown
 						tankAnim = "down"
 					case sdl.K_d:
+						dirKey = e.Keysym.Sym
+						speed = tankSpeed
 						direction = util.VectorRight
 						tankAnim = "right"
 					}
-				} else if e.Type == sdl.KEYUP && pressedKey == e.Keysym.Sym {
-					fmt.Println(sdl.GetKeyName(sdl.Keycode(pressedKey)), sdl.GetKeyName(sdl.Keycode(e.Keysym.Sym)))
-					pressedKey = sdl.K_UNKNOWN
+				} else if e.Type == sdl.KEYUP && dirKey == e.Keysym.Sym {
+					dirKey = sdl.K_UNKNOWN
 					speed = 0
 				}
 			case *sdl.QuitEvent:
@@ -130,7 +144,9 @@ func main() {
 			curFrame = 0
 		}
 
-		tankPos = tankPos.Sum(direction.MulScalar(int32(speed * float32(delta))))
+		if p := tankPos.Sum(direction.MulScalar(int32(speed * float32(delta)))); inBounds(p, size*scale, size*scale) {
+			tankPos = p
+		}
 
 		// Draw
 		renderer.SetDrawColor(0, 0, 1, 255)
@@ -148,4 +164,8 @@ func main() {
 		curTime = sdl.GetTicks64()
 		sdl.Delay(16)
 	}
+}
+
+func inBounds(v util.Vector, w, h int32) bool {
+	return v.X >= 0 && v.X+w <= screenWidth && v.Y >= 0 && v.Y+h <= screenHeight
 }
